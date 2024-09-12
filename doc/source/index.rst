@@ -6,6 +6,7 @@ Adaptive Filtering Wizard
    :caption: Contents:
 
    intro
+	 quickstart
    workflows
    datasets
    libraries
