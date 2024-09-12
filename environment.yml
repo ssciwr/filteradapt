@@ -26,3 +26,4 @@ dependencies:
   - wrapt
   - xdg
   - xmltodict
+  - geojson-rewind

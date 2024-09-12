@@ -25,6 +25,14 @@ def test_segmentation():
 def test_save_load_segmentation(tmpdir):
     p1 = geojson.utils.generate_random("Polygon")
     p2 = geojson.utils.generate_random("Polygon")
+    p_correct = {
+        "coordinates": [[[-39, 11], [7, -59], [0, 0], [-39, 11]]],
+        "type": "Polygon",
+    }
+    p_wrong = {
+        "coordinates": [[[-39, 11], [0, 0], [7, -59], [-39, 11]]],
+        "type": "Polygon",
+    }
 
     s = Segmentation(
         [
@@ -40,13 +48,36 @@ def test_save_load_segmentation(tmpdir):
             },
         ]
     )
+    s_faulty = Segmentation(
+        [
+            {
+                "type": "Feature",
+                "properties": {"style": {}},
+                "geometry": p_correct,
+            },
+            {
+                "type": "Feature",
+                "properties": {"style": {}},
+                "geometry": p_wrong,
+            },
+        ]
+    )
+
     filename = os.path.join(tmpdir, "testsave.geojson")
+    filename_faulty = os.path.join(tmpdir, "testsave_faulty.geojson")
+
     s.save(filename)
+    s_faulty.save(filename_faulty)
     s2 = Segmentation.load(filename=filename)
     s3 = Segmentation.load(filename=[filename, filename])
     s4 = Segmentation.load(filename=(filename, filename))
     with pytest.raises(TypeError):
         s5 = Segmentation.load(filename=4)
+
+    # test wrong geojson standard
+
+    s6 = Segmentation.load(filename_faulty)
+    assert s6[0]["features"][0] == s6[0]["features"][1]
 
 
 def test_convert_segmentation(boundary_segmentation):

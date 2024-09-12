@@ -14,6 +14,7 @@ import collections
 import copy
 from itertools import groupby
 from pyproj import Transformer, crs
+from geojson_rewind import rewind
 
 
 class Segmentation(geojson.FeatureCollection):
@@ -49,14 +50,17 @@ class Segmentation(geojson.FeatureCollection):
                             geojson.load(f), spatial_reference=spatial_reference
                         )
                     )
+            segmentations = enforce_geojson_topology(segmentations)
             return segmentations
 
         elif isinstance(filename, str):
             filename = locate_file(filename)
             with open(filename, "r") as f:
-                return Segmentation(
+                segmentation = Segmentation(
                     geojson.load(f), spatial_reference=spatial_reference
                 )
+            segmentation = enforce_geojson_topology(segmentation)
+            return segmentation
 
     def save(self, filename):
         """Save the segmentation to disk
@@ -86,6 +90,22 @@ class Segmentation(geojson.FeatureCollection):
             "type": "FeatureCollection",
             "features": self.features,
         }
+
+
+def enforce_geojson_topology(segmentations):
+
+    if isinstance(segmentations, Segmentation):
+        segmentations = [segmentations]
+
+    for i, segmentation in enumerate(segmentations):
+        for j, feature in enumerate(segmentation["features"]):
+            # print(segmentations[i])
+            segmentations[i]["features"][j] = rewind(segmentations[i]["features"][j])
+
+    if len(segmentations) == 1:
+        segmentations = segmentations[0]
+
+    return segmentations
 
 
 def merge_classes(segmentation, keyword=None):
@@ -134,7 +154,7 @@ def merge_classes(segmentation, keyword=None):
     for feature in segmentation["features"]:
         if "merge" in feature["properties"].keys():
             _ = feature["properties"].pop("merge")
-
+    new_segmentation = enforce_geojson_topology(new_segmentation)
     return new_segmentation
 
 
@@ -228,7 +248,7 @@ def convert_segmentation(segmentation, srs_out, srs_in=None):
         new_feature["geometry"]["coordinates"] = polygon_list
 
     out_segmentation = Segmentation(new_features, spatial_reference=srs_out)
-
+    out_segmentation = enforce_geojson_topology(out_segmentation)
     return out_segmentation
 
 
@@ -254,8 +274,11 @@ def swap_coordinates(segmentation):
         if feature["geometry"]["type"] == "Polygon":
             polygon_list = polygon_list[0]
         new_feature["geometry"]["coordinates"] = polygon_list
-
-    return Segmentation(new_features, spatial_reference=segmentation.spatial_reference)
+    swapped_segmentation = Segmentation(
+        new_features, spatial_reference=segmentation.spatial_reference
+    )
+    swapped_segmentation = enforce_geojson_topology(swapped_segmentation)
+    return swapped_segmentation
 
 
 def split_segmentation_classes(segmentation):
